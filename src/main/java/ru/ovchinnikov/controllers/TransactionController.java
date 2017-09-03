@@ -19,9 +19,9 @@ import static ru.ovchinnikov.ConfigConstant.REQUEST_TIMEOUT_SEC;
 
 // @ThreadSafe
 public class TransactionController {
-    private static final Logger log = LogManager.getLogger(TransactionController.class);
-    private static final String WITHDRAW_DESC = "Withdraw";
-    private static final String RECHARGE_DESC = "Recharge";
+    static final Logger log = LogManager.getLogger(TransactionController.class);
+    static final String WITHDRAW_DESC = "Withdraw";
+    static final String RECHARGE_DESC = "Recharge";
     private final ExecutorService reactorExecutor;
     // @ThreadConfined
     private final TransactionStorage transactionStorage;
@@ -76,7 +76,7 @@ public class TransactionController {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 if (!accountStorage.findAccountFor(id).isPresent()) {
-                    throw new IllegalArgumentException();
+                    throw new IllegalStateException();
                 }
                 return transactionStorage.findTransactionsFor(id);
             }, reactorExecutor).get(REQUEST_TIMEOUT_SEC, TimeUnit.SECONDS);

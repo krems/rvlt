@@ -11,8 +11,12 @@ public class TransactionStorage {
     private final MultivaluedMap<Long, Transaction> store = new MultivaluedHashMap<>();
 
     public void store(Transaction transaction) {
-        store.add(transaction.from(), transaction);
-        store.add(transaction.to(), transaction);
+        long from = transaction.from();
+        store.add(from, transaction);
+        long to = transaction.to();
+        if (from != to) {
+            store.add(to, transaction);
+        }
     }
 
     public List<Transaction> findTransactionsFor(long id) {

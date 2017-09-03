@@ -193,7 +193,7 @@ public class TransactionServiceIntegrationTest {
                 .request(MediaType.APPLICATION_JSON).get(new GenericType<List<Transaction>>() {
                 });
 
-        assertEquals(4, transactions.size());
+        assertEquals(3, transactions.size());
         assertTrue(transactions.contains(Transaction.create(from, to, BigDecimal.TEN, "ten", 1)));
         assertTrue(transactions.contains(Transaction.create(to, from, BigDecimal.ONE, "one back", 1)));
     }

@@ -122,7 +122,7 @@ public class TransactionService {
     public List<Transaction> listTransactions(@PathParam("id") long id) {
         try {
             return transactionController.getAllTransactions(id);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
             log.debug("Requested list of transactions for non-existent account with id {}", id);
             throw new NotFoundException("Account for id " + id + " not found");
         } catch (InterruptedException e) {

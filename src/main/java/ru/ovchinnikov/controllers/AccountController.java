@@ -7,31 +7,61 @@ import ru.ovchinnikov.storage.AccountStorage;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import static ru.ovchinnikov.ConfigConstant.REQUEST_TIMEOUT_SEC;
+
+// @ThreadSafe
 public class AccountController {
     private static final Logger log = LogManager.getLogger(AccountController.class);
-    private final static AccountController instance = new AccountController();
-    private final AccountStorage storage = new AccountStorage();
+    private final ExecutorService reactorExecutor;
+    // @ThreadConfined
+    private final AccountStorage storage;
 
-    public Account createAccount() {
-        Account account = Account.create();
-        storage.store(account);
-        return account;
+    public AccountController(ExecutorService reactorExecutor, AccountStorage storage) {
+        this.reactorExecutor = reactorExecutor;
+        this.storage = storage;
     }
 
-    public Optional<Account> findAccount(long id) {
-        return storage.findAccountFor(id);
+    public Account createAccount() throws Throwable {
+        try {
+            return CompletableFuture.supplyAsync(() -> {
+                Account account = Account.create();
+                storage.store(account);
+                return account;
+            }, reactorExecutor).get(REQUEST_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            throw e.getCause();
+        }
     }
 
-    public List<Account> getAccounts() {
-        return storage.getAllAccounts();
+    public Optional<Account> findAccount(long id) throws Throwable {
+        try {
+            return CompletableFuture.supplyAsync(() -> storage.findAccountFor(id), reactorExecutor)
+                    .get(REQUEST_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            throw e.getCause();
+        }
     }
 
-    public boolean deleteAccount(long id) {
-        return storage.remove(id);
+    public List<Account> getAccounts() throws Throwable {
+        try {
+            return CompletableFuture.supplyAsync(storage::getAllAccounts, reactorExecutor)
+                    .get(REQUEST_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            throw e.getCause();
+        }
     }
 
-    public static AccountController instance() {
-        return instance;
+    public boolean deleteAccount(long id) throws Throwable {
+        try {
+            return CompletableFuture.supplyAsync(() -> storage.remove(id), reactorExecutor)
+                    .get(REQUEST_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            throw e.getCause();
+        }
     }
 }

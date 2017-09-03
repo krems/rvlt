@@ -193,9 +193,9 @@ public class TransactionServiceIntegrationTest {
                 .request(MediaType.APPLICATION_JSON).get(new GenericType<List<Transaction>>() {
                 });
 
-        assertEquals(2, transactions.size());
+        assertEquals(4, transactions.size());
         assertTrue(transactions.contains(Transaction.create(from, to, BigDecimal.TEN, "ten", 1)));
-        assertTrue(transactions.contains(Transaction.create(to, from, BigDecimal.ONE, "tone back", 1)));
+        assertTrue(transactions.contains(Transaction.create(to, from, BigDecimal.ONE, "one back", 1)));
     }
 
     @Test
@@ -219,16 +219,12 @@ public class TransactionServiceIntegrationTest {
     private void transfer(long from, long to, BigDecimal amount, String description) {
         Response transferResponse = target.path(String.valueOf(from) + TRANSFER)
                 .queryParam("to", to)
-                .queryParam("amount", new BigDecimal(100))
+                .queryParam("amount", amount)
                 .queryParam("desc", description)
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(""));
 
         assumeThat(transferResponse.getStatus(), Is.is(Response.Status.OK.getStatusCode()));
-        Account fromAccount = getAccount(from);
-        assumeThat(fromAccount.balance(), Is.is(BigDecimal.ZERO));
-        Account toAccount = getAccount(to);
-        assumeThat(toAccount.balance(), Is.is(BigDecimal.valueOf(200)));
     }
 
     private void recharge(long id, BigDecimal balance) {

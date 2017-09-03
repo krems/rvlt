@@ -2,6 +2,7 @@ package ru.ovchinnikov.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.ovchinnikov.Injector;
 import ru.ovchinnikov.controllers.AccountController;
 import ru.ovchinnikov.controllers.TransactionController;
 import ru.ovchinnikov.model.Account;
@@ -13,6 +14,7 @@ import javax.ws.rs.core.Response;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 @Path(AccountService.ACCOUNTS + "/{id}")
 public class TransactionService {
@@ -21,15 +23,23 @@ public class TransactionService {
     public static final String WITHDRAW = "/withdraw";
     public static final String TRANSACTIONS = "/transactions";
     private static final Logger log = LogManager.getLogger(TransactionService.class);
-    private final AccountController accountController = AccountController.instance();
-    private final TransactionController transactionController = TransactionController.instance();
+    private final AccountController accountController = Injector.accountController();
+    private final TransactionController transactionController = Injector.transactionController();
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Account getAccount(@PathParam("id") long id) {
-        Optional<Account> account = accountController.findAccount(id);
-        if (account.isPresent()) {
-            return account.get();
+        try {
+            Optional<Account> account = accountController.findAccount(id);
+            if (account.isPresent()) {
+                return account.get();
+            }
+        } catch (InterruptedException e) {
+            throw new WebApplicationException("Interrupted exception");
+        } catch (TimeoutException e) {
+            throw new ServiceUnavailableException("Timeout processing request");
+        } catch (Throwable throwable) {
+            throw new InternalServerErrorException();
         }
         log.debug("Requested non-existent account for id {}", id);
         throw new NotFoundException("Account for id " + id + " not found");
@@ -37,11 +47,17 @@ public class TransactionService {
 
     @DELETE
     public Response deleteAccount(@PathParam("id") long id) {
-        if (!accountController.deleteAccount(id)) {
-            log.debug("Requested deletion of non-existent account for id {}", id);
-            return Response.status(Response.Status.NOT_FOUND).build();
+        try {
+            if (!accountController.deleteAccount(id)) {
+                log.debug("Requested deletion of non-existent account for id {}", id);
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+            return Response.noContent().build();
+        } catch (TimeoutException e) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
+        } catch (Throwable throwable) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.noContent().build();
     }
 
     @POST
@@ -50,51 +66,71 @@ public class TransactionService {
                              @QueryParam("to") long to,
                              @QueryParam("amount") BigDecimal amount,
                              @DefaultValue("") @QueryParam("desc") String description) {
-        Optional<Account> fromAccount = accountController.findAccount(from);
-        Optional<Account> toAccount = accountController.findAccount(to);
-        if (fromAccount.isPresent() && toAccount.isPresent()) {
-            if (transactionController.transfer(fromAccount.get(), toAccount.get(), amount, description)) {
-                return Response.ok().build();
-            }
+        try {
+            transactionController.transfer(from, to, amount, description);
+            return Response.ok().build();
+        } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_MODIFIED).build();
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        } catch (TimeoutException e) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
+        } catch (Throwable throwable) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        log.debug("Requested transaction between accounts, one doen'r exist, ids from:{}, tp:{}", from, to);
-        return Response.status(Response.Status.NOT_FOUND).build();
     }
 
     @POST
     @Path(RECHARGE)
     public Response recharge(@PathParam("id") long id,
                              @QueryParam("amount") BigDecimal amount) {
-        Optional<Account> account = accountController.findAccount(id);
-        if (!account.isPresent()) {
-            log.debug("Requested recharge of non-existent account for id {}", id);
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        if (transactionController.recharge(account.get(), amount)) {
+        try {
+            transactionController.recharge(id, amount);
             return Response.ok().build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_MODIFIED).build();
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        } catch (TimeoutException e) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
+        } catch (Throwable throwable) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Response.Status.NOT_MODIFIED).build();
     }
 
     @POST
     @Path(WITHDRAW)
     public Response withdraw(@PathParam("id") long id,
                              @QueryParam("amount") BigDecimal amount) {
-        Optional<Account> account = accountController.findAccount(id);
-        if (!account.isPresent()) {
-            log.debug("Requested withdrawal of non-existent account for id {}", id);
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        if (transactionController.withdraw(account.get(), amount)) {
+        try {
+            transactionController.withdraw(id, amount);
             return Response.ok().build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_MODIFIED).build();
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        } catch (TimeoutException e) {
+            return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
+        } catch (Throwable throwable) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Response.Status.NOT_MODIFIED).build();
     }
 
     @GET
     @Path(TRANSACTIONS)
+    @Produces(MediaType.APPLICATION_JSON)
     public List<Transaction> listTransactions(@PathParam("id") long id) {
-        return transactionController.getAllTransactions(id);
+        try {
+            return transactionController.getAllTransactions(id);
+        } catch (IllegalArgumentException e) {
+            log.debug("Requested list of transactions for non-existent account with id {}", id);
+            throw new NotFoundException("Account for id " + id + " not found");
+        } catch (InterruptedException e) {
+            throw new WebApplicationException("Interrupted exception");
+        } catch (TimeoutException e) {
+            throw new ServiceUnavailableException("Timeout processing request");
+        } catch (Throwable throwable) {
+            throw new InternalServerErrorException();
+        }
     }
 }

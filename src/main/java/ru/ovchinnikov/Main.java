@@ -3,28 +3,34 @@ package ru.ovchinnikov;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
+import ru.ovchinnikov.controllers.AccountController;
+import ru.ovchinnikov.controllers.TransactionController;
+import ru.ovchinnikov.storage.AccountStorage;
+import ru.ovchinnikov.storage.TransactionStorage;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class Main {
-    // Base URI the Grizzly HTTP server will listen on
     public static final String BASE_URI = "http://localhost:8080/revolut";
+    private final static ExecutorService reactorExecutor = Executors.newSingleThreadExecutor();
 
-    /**
-     * Starts Grizzly HTTP server exposing JAX-RS resources defined in this application.
-     *
-     * @return Grizzly HTTP server.
-     */
     public static HttpServer startServer() {
-        // create a resource config that scans for JAX-RS resources and providers
-        // in ru.ovchinnikov package
-        final ResourceConfig rc = new ResourceConfig().packages("ru.ovchinnikov");
-
-        // create and start a new instance of grizzly http server
-        // exposing the Jersey application at BASE_URI
+        ResourceConfig rc = bootstrapServer();
         return GrizzlyHttpServerFactory.createHttpServer(URI.create(BASE_URI), rc);
+    }
+
+    private static ResourceConfig bootstrapServer() {
+        AccountStorage accountStorage = new AccountStorage();
+        TransactionStorage transactionStorage = new TransactionStorage();
+        AccountController accountController = new AccountController(reactorExecutor, accountStorage);
+        TransactionController transactionController =
+                new TransactionController(reactorExecutor, transactionStorage, accountStorage);
+        Injector.init(accountController, transactionController);
+        return new ResourceConfig().packages("ru.ovchinnikov");
     }
 
     public static void main(String[] args) {
@@ -36,6 +42,7 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
+            reactorExecutor.shutdownNow();
             server.shutdownNow();
         }
     }

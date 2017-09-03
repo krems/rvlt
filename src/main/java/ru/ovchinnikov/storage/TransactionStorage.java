@@ -4,6 +4,7 @@ import ru.ovchinnikov.model.Transaction;
 
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import java.util.Collections;
 import java.util.List;
 
 public class TransactionStorage {
@@ -15,6 +16,7 @@ public class TransactionStorage {
     }
 
     public List<Transaction> findTransactionsFor(long id) {
-        return store.get(id);
+        List<Transaction> transactions = store.get(id);
+        return transactions == null ? Collections.emptyList() : transactions;
     }
 }

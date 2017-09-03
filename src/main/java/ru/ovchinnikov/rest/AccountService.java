@@ -14,6 +14,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
+
+// todo: document API
 @Path(AccountService.ACCOUNTS)
 public class AccountService {
     public static final String ACCOUNTS = "/accounts";

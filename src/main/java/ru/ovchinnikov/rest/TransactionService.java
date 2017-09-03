@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
+// todo: document API
 @Path(AccountService.ACCOUNTS + "/{id}")
 public class TransactionService {
     public static final String TRANSFER = "/transfer";

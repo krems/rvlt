@@ -36,10 +36,12 @@ public class TransactionService {
                 return account.get();
             }
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new WebApplicationException("Interrupted exception");
         } catch (TimeoutException e) {
             throw new ServiceUnavailableException("Timeout processing request");
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             throw new InternalServerErrorException();
         }
         log.debug("Requested non-existent account for id {}", id);
@@ -54,9 +56,13 @@ public class TransactionService {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
             return Response.noContent().build();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WebApplicationException("Interrupted exception");
         } catch (TimeoutException e) {
             return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -70,6 +76,9 @@ public class TransactionService {
         try {
             transactionController.transfer(from, to, amount, description);
             return Response.ok().build();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WebApplicationException("Interrupted exception");
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_MODIFIED).build();
         } catch (IllegalStateException e) {
@@ -77,6 +86,7 @@ public class TransactionService {
         } catch (TimeoutException e) {
             return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -88,6 +98,9 @@ public class TransactionService {
         try {
             transactionController.recharge(id, amount);
             return Response.ok().build();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WebApplicationException("Interrupted exception");
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_MODIFIED).build();
         } catch (IllegalStateException e) {
@@ -95,6 +108,7 @@ public class TransactionService {
         } catch (TimeoutException e) {
             return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -106,6 +120,9 @@ public class TransactionService {
         try {
             transactionController.withdraw(id, amount);
             return Response.ok().build();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WebApplicationException("Interrupted exception");
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.NOT_MODIFIED).build();
         } catch (IllegalStateException e) {
@@ -113,6 +130,7 @@ public class TransactionService {
         } catch (TimeoutException e) {
             return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -127,10 +145,12 @@ public class TransactionService {
             log.debug("Requested list of transactions for non-existent account with id {}", id);
             throw new NotFoundException("Account for id " + id + " not found");
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new WebApplicationException("Interrupted exception");
         } catch (TimeoutException e) {
             throw new ServiceUnavailableException("Timeout processing request");
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             throw new InternalServerErrorException();
         }
     }

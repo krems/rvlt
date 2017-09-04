@@ -28,10 +28,12 @@ public class AccountService {
         try {
             return accountController.getAccounts();
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new WebApplicationException("Interrupted exception");
         } catch (TimeoutException e) {
             throw new ServiceUnavailableException("Timeout processing request");
         } catch (Throwable throwable) {
+            log.error("Unexpected error", throwable);
             throw new InternalServerErrorException();
         }
     }
@@ -42,9 +44,13 @@ public class AccountService {
             Account account = accountController.createAccount();
             URI location = buildNewAccountLocation(account.id());
             return Response.created(location).build();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WebApplicationException("Interrupted exception");
         } catch (TimeoutException e) {
             return Response.status(Response.Status.GATEWAY_TIMEOUT).build();
         } catch (Throwable e) {
+            log.error("Unexpected error", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
     }

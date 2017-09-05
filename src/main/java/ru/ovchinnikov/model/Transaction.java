@@ -78,4 +78,15 @@ public class Transaction {
         result = 31 * result + (description != null ? description.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "Transaction{" +
+                "from=" + from +
+                ", to=" + to +
+                ", amount=" + amount +
+                ", description='" + description + '\'' +
+                ", timestamp=" + timestamp +
+                '}';
+    }
 }

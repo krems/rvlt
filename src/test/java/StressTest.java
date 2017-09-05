@@ -26,6 +26,8 @@ public class StressTest {
     private static final double EPSILON = 1e-15;
     private static final int THREADS = 8;
     private static final int ITERATIONS = 1000;
+    private static final int NUMBER_OF_ACCOUNTS = 3;
+    private static final int INITIAL_BALANCE = 1000;
     private ExecutorService executorService;
     private HttpServer server;
 
@@ -47,20 +49,24 @@ public class StressTest {
         WebTarget target = buildTargetClient();
         createAccounts(target);
         List<Account> accounts = getAccounts(target);
-        BigDecimal balance = BigDecimal.valueOf(1000);
-        accounts.forEach(account -> recharge(target, account.id(), balance));
-        BigDecimal total = balance.multiply(BigDecimal.valueOf(accounts.size()));
+        BigDecimal total = rechargeAccountsGetTotal(target, accounts);
 
-        List<Future<?>> futures = fireRandomTransfers(accounts, balance);
+        List<Future<?>> futures = fireRandomTransfers(accounts);
         await(futures);
 
         List<Account> finalAccounts = getAccounts(target);
-        assertEquals(3, finalAccounts.size());
+        assertEquals(NUMBER_OF_ACCOUNTS, finalAccounts.size());
         checkTotal(total, finalAccounts);
     }
 
+    private BigDecimal rechargeAccountsGetTotal(WebTarget target, List<Account> accounts) {
+        BigDecimal balance = BigDecimal.valueOf(INITIAL_BALANCE);
+        accounts.forEach(account -> recharge(target, account.id(), balance));
+        return balance.multiply(BigDecimal.valueOf(accounts.size()));
+    }
+
     private void createAccounts(WebTarget target) {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < NUMBER_OF_ACCOUNTS; i++) {
             createAccount(target);
         }
     }
@@ -73,11 +79,11 @@ public class StressTest {
         assertEquals(EPSILON, total.doubleValue(), finalTotal.doubleValue());
     }
 
-    private List<Future<?>> fireRandomTransfers(List<Account> accounts, BigDecimal balance) {
+    private List<Future<?>> fireRandomTransfers(List<Account> accounts) {
         CountDownLatch latch = new CountDownLatch(THREADS);
         List<Future<?>> futures = new ArrayList<>();
         for (int i = 0; i < THREADS; i++) {
-            futures.add(executorService.submit(() -> performRandomTransfer(accounts, balance, latch)));
+            futures.add(executorService.submit(() -> performRandomTransfer(accounts, latch)));
         }
         return futures;
     }
@@ -88,7 +94,7 @@ public class StressTest {
         }
     }
 
-    private void performRandomTransfer(List<Account> accounts, BigDecimal balance, CountDownLatch latch) {
+    private void performRandomTransfer(List<Account> accounts, CountDownLatch latch) {
         List<Account> localAccounts = new ArrayList<>(accounts);
         WebTarget client = buildTargetClient();
         awaitOthers(latch);
@@ -96,7 +102,7 @@ public class StressTest {
             Collections.shuffle(localAccounts);
             Account from = localAccounts.get(0);
             Account to = localAccounts.get(1);
-            double amount = ThreadLocalRandom.current().nextDouble(balance.doubleValue());
+            double amount = ThreadLocalRandom.current().nextDouble(INITIAL_BALANCE);
             transfer(client, from.id(), to.id(),
                     BigDecimal.valueOf(amount), String.valueOf(from.id()) + "->" + String.valueOf(to.id()));
         }
